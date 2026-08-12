@@ -58,6 +58,7 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.StatusCreated,
 		"Domain created successfully",
 		domain,
+		nil,
 	)
 
 }
@@ -108,7 +109,7 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	domains, err := h.service.GetAll(limit, offset, status, registrar)
+	domains, total, err := h.service.GetAll(limit, offset, status, registrar)
 	if err != nil {
 		utils.SendErrorResponse(
 			w,
@@ -117,11 +118,21 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	totalPages := (total + limit - 1) / limit
+
+	pagination := models.Pagination{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+
 	utils.SendResponse(
 		w,
 		http.StatusOK,
 		"Domains fetched successfully",
 		domains,
+		&pagination,
 	)
 }
 func (h *DomainHandler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -158,6 +169,7 @@ func (h *DomainHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		http.StatusOK,
 		"Domain fetched successfully",
 		domain,
+		nil,
 	)
 }
 func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +228,7 @@ func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		http.StatusOK,
 		"Domain updated successfully",
 		domain,
+		nil,
 	)
 }
 func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -254,6 +267,7 @@ func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusOK,
 		"Domain deleted successfully",
+		nil,
 		nil,
 	)
 }

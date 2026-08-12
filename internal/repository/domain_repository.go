@@ -37,11 +37,20 @@ func (r *DomainRepository) Create(domain *models.Domain) error {
 
 }
 
-func (r *DomainRepository) GetAll(limit int, offset int, status string, registrar string) ([]models.Domain, error) {
+func (r *DomainRepository) GetAll(limit int, offset int, status string, registrar string) ([]models.Domain, int, error) {
 	var rows *sql.Rows
+	var count int
 	var err error
 	if status == "" && registrar == "" {
 
+		countQuery := `
+		Select Count(*)
+		from domains;
+		`
+		err = r.db.QueryRow(countQuery).Scan(&count)
+		if err != nil {
+			return nil, 0, err
+		}
 		query := `
 	Select id, domain_name, registrar, expiry_date, status 
 	From domains 
@@ -50,7 +59,14 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 	`
 		rows, err = r.db.Query(query, limit, offset)
 	} else if status != "" && registrar == "" {
-
+		countQuery := `
+		Select Count(*)
+		from domains;
+		`
+		err = r.db.QueryRow(countQuery).Scan(&count)
+		if err != nil {
+			return nil, 0, err
+		}
 		query := `
 		Select id, domain_name, registrar, expiry_date, status
 		from domains
@@ -60,6 +76,15 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 		`
 		rows, err = r.db.Query(query, status, limit, offset)
 	} else if status == "" && registrar != "" {
+		countQuery := `
+		Select Count(*)
+		from domains;
+		`
+		err = r.db.QueryRow(countQuery).Scan(&count)
+		if err != nil {
+			return nil, 0, err
+		}
+
 		query := `
 		Select id, domain_name, registrar, expiry_date, status
 		From domains
@@ -70,6 +95,15 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 		rows, err = r.db.Query(query, registrar, limit, offset)
 
 	} else {
+
+		countQuery := `
+		Select Count(*)
+		from domains;
+		`
+		err = r.db.QueryRow(countQuery).Scan(&count)
+		if err != nil {
+			return nil, 0, err
+		}
 		query := `
 		select id, domain_name, registrar, expiry_date, status
 		From domains
@@ -80,7 +114,7 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 		rows, err = r.db.Query(query, status, registrar, limit, offset)
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -98,14 +132,14 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		domains = append(domains, domain)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return domains, nil
+	return domains, count, nil
 }
 
 func (r *DomainRepository) GetByID(id int) (*models.Domain, error) {

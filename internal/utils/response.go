@@ -11,14 +11,16 @@ func SendResponse(
 	statusCode int,
 	message string,
 	data interface{},
+	pagination *models.Pagination,
 ) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
 	response := models.Response{
-		Success: true,
-		Message: message,
-		Data:    data,
+		Success:    true,
+		Message:    message,
+		Data:       data,
+		Pagination: pagination,
 	}
 
 	json.NewEncoder(w).Encode(response)
