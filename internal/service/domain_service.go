@@ -28,8 +28,8 @@ func (s *DomainService) Create(domain *models.Domain) error {
 
 	return s.repo.Create(domain)
 }
-func (s *DomainService) GetAll(limit int, offset int, status string) ([]models.Domain, error) {
-	return s.repo.GetAll(limit, offset, status)
+func (s *DomainService) GetAll(limit int, offset int, status string, registrar string) ([]models.Domain, error) {
+	return s.repo.GetAll(limit, offset, status, registrar)
 }
 func (s *DomainService) GetByID(id int) (*models.Domain, error) {
 	return s.repo.GetByID(id)

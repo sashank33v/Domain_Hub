@@ -66,7 +66,7 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	limit := 10
 	status := r.URL.Query().Get("status")
-
+	registrar := r.URL.Query().Get("registrar")
 	pagestr := r.URL.Query().Get("page")
 	limitstr := r.URL.Query().Get("limit")
 
@@ -108,7 +108,7 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	domains, err := h.service.GetAll(limit, offset, status)
+	domains, err := h.service.GetAll(limit, offset, status, registrar)
 	if err != nil {
 		utils.SendErrorResponse(
 			w,
@@ -246,14 +246,14 @@ func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(
 			w,
 			http.StatusInternalServerError,
-			"Failed to delete domian",
+			"Failed to delete domain",
 		)
 		return
 	}
 	utils.SendResponse(
 		w,
 		http.StatusOK,
-		"domain deleted successfully",
+		"Domain deleted successfully",
 		nil,
 	)
 }

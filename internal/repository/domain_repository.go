@@ -19,7 +19,7 @@ func (r *DomainRepository) Create(domain *models.Domain) error {
 	query := `
 	INSERT INTO domains (domain_name, registrar, expiry_date, status)
 	VALUES ($1, $2, $3, $4)
-	RETURNING id
+	RETURNING id;
 	`
 
 	err := r.db.QueryRow(
@@ -37,10 +37,10 @@ func (r *DomainRepository) Create(domain *models.Domain) error {
 
 }
 
-func (r *DomainRepository) GetAll(limit int, offset int, status string) ([]models.Domain, error) {
+func (r *DomainRepository) GetAll(limit int, offset int, status string, registrar string) ([]models.Domain, error) {
 	var rows *sql.Rows
 	var err error
-	if status == "" {
+	if status == "" && registrar == "" {
 
 		query := `
 	Select id, domain_name, registrar, expiry_date, status 
@@ -49,15 +49,35 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string) ([]model
 	Limit $1 Offset $2;
 	`
 		rows, err = r.db.Query(query, limit, offset)
-	} else {
+	} else if status != "" && registrar == "" {
+
 		query := `
 		Select id, domain_name, registrar, expiry_date, status
 		from domains
 		where status = $1
 		order by id
-		limit $2 offset $3
+		limit $2 offset $3;
 		`
 		rows, err = r.db.Query(query, status, limit, offset)
+	} else if status == "" && registrar != "" {
+		query := `
+		Select id, domain_name, registrar, expiry_date, status
+		From domains
+		where registrar ILIKE '%' || $1 || '%'
+		order by id
+		Limit $2 offset $3;
+		`
+		rows, err = r.db.Query(query, registrar, limit, offset)
+
+	} else {
+		query := `
+		select id, domain_name, registrar, expiry_date, status
+		From domains
+		where status = $1 and registrar ILIKE '%' || $2 || '%'
+		order by id
+		Limit $3 offset $4;
+		`
+		rows, err = r.db.Query(query, status, registrar, limit, offset)
 	}
 	if err != nil {
 		return nil, err
@@ -92,7 +112,7 @@ func (r *DomainRepository) GetByID(id int) (*models.Domain, error) {
 	query := `
 	Select id, domain_name, registrar, expiry_date, status
 	From domains
-	Where id = $1
+	Where id = $1;
 	`
 	var domain models.Domain
 	err := r.db.QueryRow(query, id).Scan(
@@ -115,7 +135,7 @@ func (r *DomainRepository) Update(id int, domain *models.Domain) error {
 	registrar= $2,
 	expiry_date = $3,
 	status = $4
-	where id = $5
+	where id = $5;
 	`
 	result, err := r.db.Exec(
 		query,
@@ -141,7 +161,7 @@ func (r *DomainRepository) Update(id int, domain *models.Domain) error {
 func (r *DomainRepository) Delete(id int) error {
 	query := `
 	Delete from domains
-	where id = $1
+	where id = $1;
 	`
 	result, err := r.db.Exec(query, id)
 	if err != nil {
