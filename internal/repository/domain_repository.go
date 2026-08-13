@@ -61,9 +61,10 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 	} else if status != "" && registrar == "" {
 		countQuery := `
 		Select Count(*)
-		from domains;
+		from domains
+		where status = $1;
 		`
-		err = r.db.QueryRow(countQuery).Scan(&count)
+		err = r.db.QueryRow(countQuery, status).Scan(&count)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -78,9 +79,10 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 	} else if status == "" && registrar != "" {
 		countQuery := `
 		Select Count(*)
-		from domains;
+		from domains
+		WHERE registrar ILIKE '%' || $1 || '%';
 		`
-		err = r.db.QueryRow(countQuery).Scan(&count)
+		err = r.db.QueryRow(countQuery, registrar).Scan(&count)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -98,9 +100,11 @@ func (r *DomainRepository) GetAll(limit int, offset int, status string, registra
 
 		countQuery := `
 		Select Count(*)
-		from domains;
+		from domains
+		WHERE status = $1 AND
+		 registrar ILIKE '%' || $2 || '%';
 		`
-		err = r.db.QueryRow(countQuery).Scan(&count)
+		err = r.db.QueryRow(countQuery, status, registrar).Scan(&count)
 		if err != nil {
 			return nil, 0, err
 		}

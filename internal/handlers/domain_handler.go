@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"domainhub/internal/dto"
 	"domainhub/internal/models"
 	"domainhub/internal/service"
 	"domainhub/internal/utils"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,9 +26,9 @@ func NewDomainHandler(service *service.DomainService) *DomainHandler {
 }
 
 func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var domain models.Domain
+	var req dto.CreateDomainRequest
 
-	err := json.NewDecoder(r.Body).Decode(&domain)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		utils.SendErrorResponse(
 			w,
@@ -34,6 +36,22 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 			"Invalid request body",
 		)
 		return
+	}
+	expiryDate, err := time.Parse(time.RFC3339, req.ExpiryDate)
+	if err != nil {
+		utils.SendErrorResponse(
+			w,
+			http.StatusBadRequest,
+			"Invalid expiry date",
+		)
+		return
+	}
+
+	domain := models.Domain{
+		DomainName: req.DomainName,
+		Registrar:  req.Registrar,
+		ExpiryDate: expiryDate,
+		Status:     req.Status,
 	}
 	err = h.service.Create(&domain)
 	if err != nil {
@@ -53,11 +71,12 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	response := dto.ToDomainResponse(&domain)
 	utils.SendResponse(
 		w,
 		http.StatusCreated,
 		"Domain created successfully",
-		domain,
+		response,
 		nil,
 	)
 
@@ -118,6 +137,11 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	responses := make([]dto.DomainResponse, 0, len(domains))
+
+	for _, domain := range domains {
+		responses = append(responses, dto.ToDomainResponse(&domain))
+	}
 	totalPages := (total + limit - 1) / limit
 
 	pagination := models.Pagination{
@@ -131,7 +155,7 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusOK,
 		"Domains fetched successfully",
-		domains,
+		responses,
 		&pagination,
 	)
 }
@@ -164,11 +188,12 @@ func (h *DomainHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	response := dto.ToDomainResponse(domain)
 	utils.SendResponse(
 		w,
 		http.StatusOK,
 		"Domain fetched successfully",
-		domain,
+		response,
 		nil,
 	)
 }
@@ -184,9 +209,9 @@ func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-	var domain models.Domain
+	var req dto.UpdateDomainRequest
 
-	err = json.NewDecoder(r.Body).Decode(&domain)
+	err = json.NewDecoder(r.Body).Decode(&req)
 
 	if err != nil {
 		utils.SendErrorResponse(
@@ -197,6 +222,22 @@ func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expiryDate, err := time.Parse(time.RFC3339, req.ExpiryDate)
+	if err != nil {
+		utils.SendErrorResponse(
+			w,
+			http.StatusBadRequest,
+			"Invalid expiry date",
+		)
+		return
+	}
+
+	domain := models.Domain{
+		DomainName: req.DomainName,
+		Registrar:  req.Registrar,
+		ExpiryDate: expiryDate,
+		Status:     req.Status,
+	}
 	err = h.service.Update(id, &domain)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidDomain) {
@@ -223,11 +264,12 @@ func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	response := dto.ToDomainResponse(&domain)
 	utils.SendResponse(
 		w,
 		http.StatusOK,
 		"Domain updated successfully",
-		domain,
+		response,
 		nil,
 	)
 }
