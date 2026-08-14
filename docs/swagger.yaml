@@ -1,0 +1,224 @@
+basePath: /
+definitions:
+  dto.CreateDomainRequest:
+    properties:
+      domain_name:
+        type: string
+      expiry_date:
+        type: string
+      registrar:
+        type: string
+      status:
+        type: string
+    type: object
+  dto.UpdateDomainRequest:
+    properties:
+      domain_name:
+        type: string
+      expiry_date:
+        type: string
+      registrar:
+        type: string
+      status:
+        type: string
+    type: object
+  models.Pagination:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  models.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      pagination:
+        $ref: '#/definitions/models.Pagination'
+      success:
+        type: boolean
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: Domain management REST API.
+  title: DomainHub API
+  version: "1.0"
+paths:
+  /domains:
+    get:
+      description: Returns domains with pagination and optional status/registrar filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Number of records per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        enum:
+        - ACTIVE
+        - EXPIRED
+        in: query
+        name: status
+        type: string
+      - description: Search by registrar
+        in: query
+        name: registrar
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get all domains
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      description: Creates a new domain
+      parameters:
+      - description: Domain
+        in: body
+        name: domain
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Create a domain
+      tags:
+      - domains
+  /domains/{id}:
+    delete:
+      description: Deletes an existing domain using its ID
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Delete a domain
+      tags:
+      - domains
+    get:
+      description: Returns a single domain using its ID
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Get domain by ID
+      tags:
+      - domains
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing domain using its ID
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated domain data
+        in: body
+        name: domain
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDomainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.Response'
+      summary: Update a domain
+      tags:
+      - domains
+swagger: "2.0"

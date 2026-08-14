@@ -25,6 +25,16 @@ func NewDomainHandler(service *service.DomainService) *DomainHandler {
 	}
 }
 
+// @Summary Create a domain
+// @Description Creates a new domain
+// @Tags domains
+// @Accept json
+// @Produce json
+// @Param domain body dto.CreateDomainRequest true "Domain"
+// @Success 201 {object} models.Response
+// @Failure 400 {object} models.Response
+// @Failure 500 {object} models.Response
+// @Router /domains [post]
 func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateDomainRequest
 
@@ -82,6 +92,19 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// GetAll godoc
+// @Summary Get all domains
+// @Description Returns domains with pagination and optional status/registrar filtering
+// @Tags domains
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Number of records per page" default(10)
+// @Param status query string false "Filter by status" Enums(ACTIVE,EXPIRED)
+// @Param registrar query string false "Search by registrar"
+// @Success 200 {object} models.Response
+// @Failure 400 {object} models.Response
+// @Failure 500 {object} models.Response
+// @Router /domains [get]
 func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	limit := 10
@@ -159,6 +182,18 @@ func (h *DomainHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		&pagination,
 	)
 }
+
+// GetByID godoc
+// @Summary Get domain by ID
+// @Description Returns a single domain using its ID
+// @Tags domains
+// @Produce json
+// @Param id path int true "Domain ID"
+// @Success 200 {object} models.Response
+// @Failure 400 {object} models.Response
+// @Failure 404 {object} models.Response
+// @Failure 500 {object} models.Response
+// @Router /domains/{id} [get]
 func (h *DomainHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
@@ -197,6 +232,20 @@ func (h *DomainHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 }
+
+// Update godoc
+// @Summary Update a domain
+// @Description Updates an existing domain using its ID
+// @Tags domains
+// @Accept json
+// @Produce json
+// @Param id path int true "Domain ID"
+// @Param domain body dto.UpdateDomainRequest true "Updated domain data"
+// @Success 200 {object} models.Response
+// @Failure 400 {object} models.Response
+// @Failure 404 {object} models.Response
+// @Failure 500 {object} models.Response
+// @Router /domains/{id} [put]
 func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idstr := chi.URLParam(r, "id")
 
@@ -273,6 +322,18 @@ func (h *DomainHandler) Update(w http.ResponseWriter, r *http.Request) {
 		nil,
 	)
 }
+
+// Delete godoc
+// @Summary Delete a domain
+// @Description Deletes an existing domain using its ID
+// @Tags domains
+// @Produce json
+// @Param id path int true "Domain ID"
+// @Success 200 {object} models.Response
+// @Failure 400 {object} models.Response
+// @Failure 404 {object} models.Response
+// @Failure 500 {object} models.Response
+// @Router /domains/{id} [delete]
 func (h *DomainHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	idstr := chi.URLParam(r, "id")

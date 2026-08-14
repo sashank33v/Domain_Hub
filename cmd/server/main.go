@@ -16,6 +16,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// @title DomainHub API
+// @version 1.0
+// @description Domain management REST API.
+// @host localhost:8000
+// @BasePath /
 func main() {
 
 	cfg, err := config.LoadConfig()
