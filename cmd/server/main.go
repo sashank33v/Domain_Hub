@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"domainhub/internal/config"
 	"domainhub/internal/database"
@@ -48,11 +53,48 @@ func main() {
 	r.Use(middleware.CORS)
 	routes.RegisterRoutes(r, domainHandler)
 
+	server := http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: r,
+	}
+
 	fmt.Printf("Server running on http://localhost:%s\n", cfg.Port)
 
-	err = http.ListenAndServe(":"+cfg.Port, r)
-	if err != nil {
-		log.Fatal("Server Error:", err)
+	serverErr := make(chan error, 1)
+
+	go func() {
+		serverErr <- server.ListenAndServe()
+	}()
+
+	stop := make(chan os.Signal, 1)
+
+	signal.Notify(
+		stop,
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+
+	select {
+	case err := <-serverErr:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal("Server Error:", err)
+		}
+
+	case <-stop:
+		fmt.Println("shutting down server....")
+
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			5*time.Second,
+		)
+		defer cancel()
+
+		err := server.Shutdown(ctx)
+		if err != nil {
+			log.Fatal("Server shutdown Error:", err)
+		}
+
+		fmt.Println("server stopped successfully")
 	}
 }
 
