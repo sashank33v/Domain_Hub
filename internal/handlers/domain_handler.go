@@ -15,14 +15,23 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type DomainHandler struct {
-	service *service.DomainService
+type DomainServiceInterface interface {
+	Create(*models.Domain) error
+	GetAll(int, int, string, string) ([]models.Domain, int, error)
+	GetByID(int) (*models.Domain, error)
+	Update(int, *models.Domain) error
+	Delete(int) error
 }
 
-func NewDomainHandler(service *service.DomainService) *DomainHandler {
+type DomainHandler struct {
+	service DomainServiceInterface
+}
+
+func NewDomainHandler(service DomainServiceInterface) *DomainHandler {
 	return &DomainHandler{
 		service: service,
 	}
+
 }
 
 // @Summary Create a domain
