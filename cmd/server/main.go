@@ -48,12 +48,12 @@ func main() {
 	domainHandler := handlers.NewDomainHandler(domainService)
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	authhandler := *handlers.NewAuthHandler(authService)
+	authhandler := handlers.NewAuthHandler(authService)
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS)
-	routes.RegisterRoutes(r, domainHandler, &authhandler)
+	routes.RegisterRoutes(r, domainHandler, authhandler, cfg.JWTSecret)
 
 	server := http.Server{
 		Addr:    ":" + cfg.Port,

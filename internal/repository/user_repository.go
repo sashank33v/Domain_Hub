@@ -46,11 +46,11 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	var user models.User
 
 	err := r.db.QueryRow(query, email).Scan(
-		user.ID,
-		user.Email,
-		user.PasswordHash,
-		user.Role,
-		user.CreatedAt,
+		&user.ID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.CreatedAt,
 	)
 
 	if err != nil {
