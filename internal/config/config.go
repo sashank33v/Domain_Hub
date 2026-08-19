@@ -19,10 +19,8 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	err := godotenv.Load()
-	if err != nil {
-		return nil, err
-	}
+	_ = godotenv.Load()
+
 	cfg := &Config{
 		AppName:    os.Getenv("APP_NAME"),
 		Port:       os.Getenv("PORT"),
