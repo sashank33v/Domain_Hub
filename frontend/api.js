@@ -42,11 +42,16 @@ async function apiRequest(path, options = {}) {
         headers["Content-Type"] = "application/json";
     }
 
-    const token = getToken();
+const token = getToken();
+const method = (options.method || "GET").toUpperCase();
 
-    if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-    }
+if (
+    token &&
+    !path.startsWith("/auth/") &&
+    method !== "GET"
+) {
+    headers["Authorization"] = `Bearer ${token}`;
+}
 
     const response = await fetch(
         `${API_BASE_URL}${path}`,
