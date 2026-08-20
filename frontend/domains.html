@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomainHub - Domains</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet">
+</head>
+<body class="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen">
+    <header class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur border-b border-slate-100">
+        <div class="max-w-7xl mx-auto h-16 flex items-center justify-between px-4 sm:px-6">
+            <a href="dashboard.html" class="flex items-center gap-3 font-semibold text-lg"><span class="w-9 h-9 rounded-lg bg-[#3525cd] text-white flex items-center justify-center"><span class="material-symbols-outlined">language</span></span>DomainHub</a>
+            <div class="flex gap-3 items-center"><a href="manage-domains.html" class="hidden sm:inline-flex px-4 py-2 rounded-lg bg-[#3525cd] text-white font-semibold">Add Domain</a><button id="logoutButton" class="text-sm font-semibold text-slate-700 hover:text-red-600">Logout</button></div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-10">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold">Domains</h1>
+                <p class="mt-2 text-slate-500">Search, filter, edit and delete managed domains.</p>
+            </div>
+            <a href="manage-domains.html" class="sm:hidden inline-flex justify-center px-4 py-3 rounded-lg bg-[#3525cd] text-white font-semibold">Add Domain</a>
+        </div>
+
+        <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 mb-6">
+            <div class="grid md:grid-cols-[1fr_180px_auto] gap-3">
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                    <input id="registrarFilter" class="w-full h-12 pl-10 pr-4 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="Search registrar...">
+                </div>
+                <select id="statusFilter" class="h-12 rounded-lg border border-slate-200 px-3 outline-none focus:ring-2 focus:ring-[#3525cd]">
+                    <option value="">All Status</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="EXPIRED">Expired</option>
+                </select>
+                <button id="resetFilters" class="h-12 px-4 rounded-lg bg-slate-100 font-semibold">Reset</button>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div id="listState" class="p-6 text-slate-500">Loading...</div>
+            <div id="domainsList" class="divide-y divide-slate-100"></div>
+        </section>
+
+        <div class="mt-5 flex items-center justify-between gap-3">
+            <button id="prevPage" class="px-4 py-2 rounded-lg bg-white border border-slate-200 font-semibold disabled:opacity-40">Previous</button>
+            <div id="pageInfo" class="text-sm text-slate-500">Page 1</div>
+            <button id="nextPage" class="px-4 py-2 rounded-lg bg-white border border-slate-200 font-semibold disabled:opacity-40">Next</button>
+        </div>
+    </main>
+
+    <div id="deleteModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl">
+            <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mb-4"><span class="material-symbols-outlined">warning</span></div>
+            <h2 class="text-xl font-bold">Delete Domain</h2>
+            <p class="text-slate-500 mt-2">Are you sure you want to delete <strong id="deleteName"></strong>?</p>
+            <div class="flex gap-3 mt-6">
+                <button id="cancelDelete" class="flex-1 h-11 rounded-lg bg-slate-100 font-semibold">Cancel</button>
+                <button id="confirmDelete" class="flex-1 h-11 rounded-lg bg-red-600 text-white font-semibold">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script>
+        let page = 1;
+        const limit = 5;
+        let totalPages = 1;
+        let deleteId = null;
+
+        const domainsList = document.getElementById("domainsList");
+        const listState = document.getElementById("listState");
+        const registrarFilter = document.getElementById("registrarFilter");
+        const statusFilter = document.getElementById("statusFilter");
+        const pageInfo = document.getElementById("pageInfo");
+        const prevPage = document.getElementById("prevPage");
+        const nextPage = document.getElementById("nextPage");
+        const deleteModal = document.getElementById("deleteModal");
+        const deleteName = document.getElementById("deleteName");
+
+        document.getElementById("logoutButton").addEventListener("click", logout);
+        document.getElementById("resetFilters").addEventListener("click", () => {
+            registrarFilter.value = "";
+            statusFilter.value = "";
+            page = 1;
+            loadDomains();
+        });
+        registrarFilter.addEventListener("input", debounce(() => { page = 1; loadDomains(); }, 350));
+        statusFilter.addEventListener("change", () => { page = 1; loadDomains(); });
+        prevPage.addEventListener("click", () => { if (page > 1) { page--; loadDomains(); } });
+        nextPage.addEventListener("click", () => { if (page < totalPages) { page++; loadDomains(); } });
+
+        document.getElementById("cancelDelete").addEventListener("click", closeDeleteModal);
+        document.getElementById("confirmDelete").addEventListener("click", confirmDelete);
+
+        async function loadDomains() {
+            listState.textContent = "Loading domains...";
+            domainsList.innerHTML = "";
+
+            try {
+                const result = await getDomains({
+                    page,
+                    limit,
+                    status: statusFilter.value,
+                    registrar: registrarFilter.value.trim()
+                });
+
+                const domains = result.data || [];
+                totalPages = Number(result.pagination?.total_pages || 1);
+
+                if (!domains.length) {
+                    listState.textContent = "No domains found.";
+                    pageInfo.textContent = `Page ${page} of ${totalPages}`;
+                    prevPage.disabled = page <= 1;
+                    nextPage.disabled = page >= totalPages;
+                    return;
+                }
+
+                listState.textContent = `${result.pagination?.total ?? domains.length} domain(s) found`;
+                domainsList.innerHTML = domains.map(renderDomain).join("");
+                pageInfo.textContent = `Page ${page} of ${totalPages}`;
+                prevPage.disabled = page <= 1;
+                nextPage.disabled = page >= totalPages;
+            } catch (error) {
+                listState.textContent = error.message || "Failed to load domains.";
+            }
+        }
+
+        function renderDomain(domain) {
+            const active = domain.status === "ACTIVE";
+            return `
+                <div class="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="font-semibold text-lg truncate">${escapeHtml(domain.domain_name)}</h2>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${active ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}">${domain.status}</span>
+                        </div>
+                        <p class="text-sm text-slate-500 mt-1">${escapeHtml(domain.registrar)} · Expires ${formatDisplayDate(domain.expiry_date)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openDomain(${domain.id})" class="px-3 py-2 rounded-lg bg-slate-100 font-semibold text-sm">View</button>
+                        <button onclick="editDomain(${domain.id})" class="px-3 py-2 rounded-lg bg-slate-100 font-semibold text-sm">Edit</button>
+                        <button onclick="openDelete(${domain.id}, '${escapeJs(domain.domain_name)}')" class="px-3 py-2 rounded-lg bg-red-50 text-red-700 font-semibold text-sm">Delete</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openDomain = (id) => {
+            window.location.href = `manage-domains.html?id=${id}&mode=view`;
+        };
+
+        window.editDomain = (id) => {
+            window.location.href = `manage-domains.html?id=${id}`;
+        };
+
+        window.openDelete = (id, name) => {
+            deleteId = id;
+            deleteName.textContent = name;
+            deleteModal.classList.remove("hidden");
+            deleteModal.classList.add("flex");
+        };
+
+        function closeDeleteModal() {
+            deleteModal.classList.add("hidden");
+            deleteModal.classList.remove("flex");
+            deleteId = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteId) return;
+            const button = document.getElementById("confirmDelete");
+            button.disabled = true;
+            button.textContent = "Deleting...";
+
+            try {
+                await deleteDomain(deleteId);
+                closeDeleteModal();
+                await loadDomains();
+            } catch (error) {
+                alert(error.message || "Failed to delete domain.");
+            } finally {
+                button.disabled = false;
+                button.textContent = "Delete";
+            }
+        }
+
+        function debounce(fn, delay) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[char]));
+        }
+
+        function escapeJs(value) {
+            return String(value ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        }
+
+        loadDomains();
+    </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomainHub - Manage Domain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet">
+</head>
+<body class="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen">
+    <header class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur border-b border-slate-100">
+        <div class="max-w-4xl mx-auto h-16 flex items-center justify-between px-4 sm:px-6">
+            <a href="dashboard.html" class="flex items-center gap-3 font-semibold text-lg"><span class="w-9 h-9 rounded-lg bg-[#3525cd] text-white flex items-center justify-center"><span class="material-symbols-outlined">language</span></span>DomainHub</a>
+            <button id="logoutButton" class="text-sm font-semibold text-slate-700 hover:text-red-600">Logout</button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 pt-24 pb-10">
+        <div class="mb-6">
+            <a href="domains.html" class="text-sm font-semibold text-[#3525cd]">← Back to domains</a>
+            <h1 id="pageTitle" class="text-3xl font-bold mt-3">Add Domain</h1>
+            <p id="pageDescription" class="mt-2 text-slate-500">Register a domain in your DomainHub portfolio.</p>
+        </div>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+            <form id="domainForm" class="space-y-6" novalidate>
+                <div>
+                    <label for="domainName" class="block text-sm font-semibold mb-2">Domain Name</label>
+                    <input id="domainName" required class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="example.com">
+                    <p id="domainNameError" class="hidden mt-1 text-xs text-red-600">Enter a valid domain name.</p>
+                </div>
+
+                <div>
+                    <label for="registrar" class="block text-sm font-semibold mb-2">Registrar</label>
+                    <input id="registrar" required class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="GoDaddy, Namecheap, Cloudflare">
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-5">
+                    <div>
+                        <label for="expiryDate" class="block text-sm font-semibold mb-2">Expiry Date</label>
+                        <input id="expiryDate" type="date" required class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]">
+                    </div>
+                    <div>
+                        <label for="status" class="block text-sm font-semibold mb-2">Status</label>
+                        <select id="status" class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]">
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="EXPIRED">EXPIRED</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="formError" class="hidden rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm"></div>
+
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="history.back()" class="h-11 px-5 rounded-lg bg-slate-100 font-semibold">Cancel</button>
+                    <button id="submitButton" type="submit" class="h-11 px-5 rounded-lg bg-[#3525cd] text-white font-semibold disabled:opacity-60">Save Domain</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(location.search);
+            const id = params.get("id");
+            const mode = params.get("mode");
+            const isEdit = Boolean(id) && mode !== "view";
+            const isView = Boolean(id) && mode === "view";
+
+            document.getElementById("logoutButton").addEventListener("click", logout);
+
+            if (isEdit || !isView) {
+                if (!requireAuth()) return;
+            }
+
+            const pageTitle = document.getElementById("pageTitle");
+            const pageDescription = document.getElementById("pageDescription");
+            const submitButton = document.getElementById("submitButton");
+            const form = document.getElementById("domainForm");
+            const errorBox = document.getElementById("formError");
+
+            if (isEdit) {
+                pageTitle.textContent = "Edit Domain";
+                pageDescription.textContent = "Update the domain information and save the changes.";
+                await loadDomain(id);
+            } else if (isView) {
+                pageTitle.textContent = "Domain Details";
+                pageDescription.textContent = "View the current domain information.";
+                await loadDomain(id);
+                setReadOnly();
+            }
+
+            async function loadDomain(domainId) {
+                try {
+                    const result = await getDomain(domainId);
+                    const domain = result.data;
+
+                    document.getElementById("domainName").value = domain.domain_name || "";
+                    document.getElementById("registrar").value = domain.registrar || "";
+                    document.getElementById("expiryDate").value = formatDateForInput(domain.expiry_date);
+                    document.getElementById("status").value = domain.status || "ACTIVE";
+                } catch (error) {
+                    errorBox.textContent = error.message || "Failed to load domain.";
+                    errorBox.classList.remove("hidden");
+                    submitButton.disabled = true;
+                }
+            }
+
+            function setReadOnly() {
+                ["domainName", "registrar", "expiryDate", "status"].forEach(id => {
+                    document.getElementById(id).disabled = true;
+                });
+                submitButton.classList.add("hidden");
+            }
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                errorBox.classList.add("hidden");
+
+                const domainName = document.getElementById("domainName").value.trim();
+                const registrar = document.getElementById("registrar").value.trim();
+                const expiryDate = document.getElementById("expiryDate").value;
+                const status = document.getElementById("status").value;
+
+                if (!domainName || !domainName.includes(".")) {
+                    document.getElementById("domainNameError").classList.remove("hidden");
+                    return;
+                }
+
+                document.getElementById("domainNameError").classList.add("hidden");
+
+                if (!registrar || !expiryDate) {
+                    errorBox.textContent = "All fields are required.";
+                    errorBox.classList.remove("hidden");
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.textContent = isEdit ? "Updating..." : "Creating...";
+
+                const payload = {
+                    domain_name: domainName,
+                    registrar,
+                    expiry_date: dateToRFC3339(expiryDate),
+                    status
+                };
+
+                try {
+                    if (isEdit) {
+                        await updateDomain(id, payload);
+                    } else {
+                        await createDomain(payload);
+                    }
+
+                    window.location.href = "domains.html";
+                } catch (error) {
+                    errorBox.textContent = error.message || "Failed to save domain.";
+                    errorBox.classList.remove("hidden");
+                    submitButton.disabled = false;
+                    submitButton.textContent = isEdit ? "Update Domain" : "Save Domain";
+                }
+            });
+        });
+    </script>
+</body>
+</html>

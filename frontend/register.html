@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomainHub - Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-[#f8f9ff] text-[#0b1c30] font-sans flex items-center justify-center p-4">
+    <main class="w-full max-w-md">
+        <section class="bg-white rounded-2xl shadow-xl p-8">
+            <div class="text-center mb-8">
+                <div class="mx-auto w-14 h-14 rounded-xl bg-[#e5eeff] flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined text-[#3525cd] text-3xl">language</span>
+                </div>
+                <h1 class="text-3xl font-bold">Create account</h1>
+                <p class="mt-2 text-slate-500">Register to manage your domains.</p>
+            </div>
+
+            <div id="errorBox" class="hidden mb-4 rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm"></div>
+
+            <form id="registerForm" class="space-y-5" novalidate>
+                <div>
+                    <label for="email" class="block text-sm font-semibold mb-2">Email address</label>
+                    <input id="email" type="email" autocomplete="email" class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="name@company.com">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-semibold mb-2">Password</label>
+                    <input id="password" type="password" autocomplete="new-password" class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="Create a password">
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-semibold mb-2">Confirm password</label>
+                    <input id="confirmPassword" type="password" autocomplete="new-password" class="w-full h-12 rounded-lg border border-slate-200 px-4 outline-none focus:ring-2 focus:ring-[#3525cd]" placeholder="Repeat your password">
+                </div>
+
+                <button id="submitButton" type="submit" class="w-full h-12 rounded-lg bg-[#3525cd] text-white font-semibold disabled:opacity-60">
+                    Create account
+                </button>
+            </form>
+
+            <p class="text-center text-sm text-slate-500 mt-6">
+                Already have an account?
+                <a href="login.html" class="font-semibold text-[#3525cd]">Sign in</a>
+            </p>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const errorBox = document.getElementById("errorBox");
+            const button = document.getElementById("submitButton");
+
+            errorBox.classList.add("hidden");
+
+            if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+                errorBox.textContent = "Enter a valid email address.";
+                errorBox.classList.remove("hidden");
+                return;
+            }
+
+            if (!password) {
+                errorBox.textContent = "Password is required.";
+                errorBox.classList.remove("hidden");
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorBox.textContent = "Passwords do not match.";
+                errorBox.classList.remove("hidden");
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = "Creating account...";
+
+            try {
+                await registerUser(email, password);
+                alert("Registration successful. Please login.");
+                window.location.href = "login.html";
+            } catch (error) {
+                errorBox.textContent = error.message || "Registration failed.";
+                errorBox.classList.remove("hidden");
+                button.disabled = false;
+                button.textContent = "Create account";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+        name="viewport"
+    />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&display=swap"
+        rel="stylesheet"
+    />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3525cd",
+                        "on-primary": "#ffffff",
+                        surface: "#f8f9ff",
+                        "on-surface": "#0b1c30"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter"]
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+
+<body class="bg-surface font-body-md text-on-surface">
+
+<main class="min-h-screen flex flex-col pt-safe pb-safe">
+
+    <div
+        class="flex flex-col w-full min-h-screen bg-surface relative justify-center items-center p-margin-mobile md:p-margin-desktop overflow-hidden"
+    >
+
+        <!-- Background grid -->
+        <div class="absolute inset-0 w-full h-full pointer-events-none opacity-[0.03]">
+            <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern
+                        height="40"
+                        id="gridPattern"
+                        patternunits="userSpaceOnUse"
+                        width="40"
+                    >
+                        <path
+                            d="M 40 0 L 0 0 0 40"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1"
+                        ></path>
+                    </pattern>
+                </defs>
+
+                <rect
+                    fill="url(#gridPattern)"
+                    height="100%"
+                    width="100%"
+                ></rect>
+            </svg>
+        </div>
+
+        <div
+            class="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] transform translate-x-1/3 -translate-y-1/3"
+        ></div>
+
+        <div
+            class="absolute bottom-0 left-0 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[120px] transform -translate-x-1/3 translate-y-1/3"
+        ></div>
+
+        <!-- Login card -->
+        <div
+            class="w-full max-w-[420px] bg-surface-container-lowest rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05),0_1px_3px_0_rgba(0,0,0,0.1)] p-stack-lg relative z-10 flex flex-col gap-stack-lg transition-all duration-300 transform"
+            id="loginCard"
+        >
+
+            <!-- Header -->
+            <div class="flex flex-col items-center gap-stack-sm text-center">
+
+                <div
+                    class="w-16 h-16 rounded-xl bg-surface-container flex items-center justify-center mb-2 shadow-sm overflow-hidden"
+                >
+                    <div
+                        class="w-full h-full flex items-center justify-center bg-primary text-white"
+                    >
+                        <span class="material-symbols-outlined text-[34px]">
+                            language
+                        </span>
+                    </div>
+                </div>
+
+                <h1 class="font-display-lg text-display-lg text-on-surface">
+                    Welcome back
+                </h1>
+
+                <p class="font-body-md text-body-md text-on-surface-variant">
+                    Sign in to manage your domains.
+                </p>
+
+            </div>
+
+            <!-- Login form -->
+            <form
+                class="flex flex-col gap-stack-md"
+                id="loginForm"
+                novalidate
+            >
+
+                <!-- Global error -->
+                <div
+                    class="hidden bg-error-container text-on-error-container p-3 rounded-lg font-body-sm text-body-sm flex items-center gap-2"
+                    id="globalError"
+                >
+                    <span class="material-symbols-outlined text-sm">
+                        error
+                    </span>
+
+                    <span id="globalErrorMessage">
+                        Invalid credentials. Please try again.
+                    </span>
+                </div>
+
+                <!-- Email -->
+                <div class="flex flex-col gap-1">
+
+                    <label
+                        class="font-label-md text-label-md text-on-surface"
+                        for="email"
+                    >
+                        Email address
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            class="w-full h-12 bg-surface-container rounded-lg px-4 text-on-surface font-body-md placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-colors shadow-sm appearance-none"
+                            id="email"
+                            name="email"
+                            placeholder="name@company.com"
+                            required
+                            type="email"
+                        />
+
+                        <div
+                            class="absolute right-4 top-1/2 -translate-y-1/2 hidden text-error"
+                            id="emailErrorIcon"
+                        >
+                            <span class="material-symbols-outlined">
+                                warning
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <p
+                        class="font-body-sm text-body-sm text-error hidden mt-1"
+                        id="emailErrorText"
+                    >
+                        Please enter a valid email.
+                    </p>
+
+                </div>
+
+                <!-- Password -->
+                <div class="flex flex-col gap-1">
+
+                    <div class="flex justify-between items-center">
+
+                        <label
+                            class="font-label-md text-label-md text-on-surface"
+                            for="password"
+                        >
+                            Password
+                        </label>
+
+                    </div>
+
+                    <div class="relative">
+
+                        <input
+                            class="w-full h-12 bg-surface-container rounded-lg px-4 pr-12 text-on-surface font-body-md placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-colors shadow-sm appearance-none"
+                            id="password"
+                            name="password"
+                            placeholder="••••••••"
+                            required
+                            type="password"
+                        />
+
+                        <button
+                            aria-label="Toggle password visibility"
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center p-1"
+                            id="togglePassword"
+                            type="button"
+                        >
+                            <span
+                                class="material-symbols-outlined text-[20px]"
+                                id="toggleIcon"
+                            >
+                                visibility_off
+                            </span>
+                        </button>
+
+                    </div>
+
+                    <p
+                        class="font-body-sm text-body-sm text-error hidden mt-1"
+                        id="passwordErrorText"
+                    >
+                        Password is required.
+                    </p>
+
+                </div>
+
+                <!-- Remember me -->
+                <div class="flex items-center gap-2 mt-2">
+
+                    <input
+                        class="w-4 h-4 rounded text-primary focus:ring-primary bg-surface-container accent-primary"
+                        id="remember"
+                        type="checkbox"
+                    />
+
+                    <label
+                        class="font-body-sm text-body-sm text-on-surface-variant cursor-pointer"
+                        for="remember"
+                    >
+                        Remember me
+                    </label>
+
+                </div>
+
+                <!-- Submit -->
+                <button
+                    class="w-full h-12 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-sm relative overflow-hidden group mt-2"
+                    id="submitBtn"
+                    type="submit"
+                >
+
+                    <span
+                        class="relative z-10 flex items-center justify-center gap-2"
+                        id="submitText"
+                    >
+                        Sign in
+
+                        <span
+                            class="material-symbols-outlined text-[18px]"
+                        >
+                            arrow_forward
+                        </span>
+                    </span>
+
+                    <span
+                        class="relative z-10 hidden items-center justify-center gap-2"
+                        id="submitLoading"
+                    >
+                        <svg
+                            class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            fill="none"
+                            viewbox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+
+                            <path
+                                class="opacity-75"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                fill="currentColor"
+                            ></path>
+                        </svg>
+
+                        Authenticating...
+                    </span>
+
+                </button>
+
+            </form>
+
+            <!-- Register -->
+            <div class="text-center mt-2">
+
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+
+                    Don't have an account?
+
+                    <a
+                        class="text-primary hover:text-primary-container font-label-md transition-colors"
+                        href="register.html"
+                    >
+                        Register
+                    </a>
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div
+            class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 text-on-surface-variant font-body-sm text-[12px] opacity-70"
+        >
+
+            <span>DomainHub</span>
+
+        </div>
+
+    </div>
+
+</main>
+
+<!-- IMPORTANT:
+     These files must be in the same frontend folder:
+     config.js
+     api.js
+-->
+<script src="config.js"></script>
+<script src="api.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    // ----------------------------------
+    // DOM REFERENCES
+    // ----------------------------------
+
+    const form =
+        document.getElementById("loginForm");
+
+    const emailInput =
+        document.getElementById("email");
+
+    const passwordInput =
+        document.getElementById("password");
+
+    const togglePasswordBtn =
+        document.getElementById("togglePassword");
+
+    const toggleIcon =
+        document.getElementById("toggleIcon");
+
+    const submitBtn =
+        document.getElementById("submitBtn");
+
+    const submitText =
+        document.getElementById("submitText");
+
+    const submitLoading =
+        document.getElementById("submitLoading");
+
+    const emailErrorText =
+        document.getElementById("emailErrorText");
+
+    const emailErrorIcon =
+        document.getElementById("emailErrorIcon");
+
+    const passwordErrorText =
+        document.getElementById("passwordErrorText");
+
+    const globalError =
+        document.getElementById("globalError");
+
+    const globalErrorMessage =
+        document.getElementById("globalErrorMessage");
+
+    const loginCard =
+        document.getElementById("loginCard");
+
+
+    // ----------------------------------
+    // ERROR DISPLAY
+    // ----------------------------------
+
+    function showGlobalError(message) {
+
+        globalErrorMessage.textContent =
+            message;
+
+        globalError.classList.remove(
+            "hidden"
+        );
+
+        loginCard.classList.add(
+            "translate-x-[-10px]",
+            "rotate-[-1deg]"
+        );
+
+        setTimeout(() => {
+
+            loginCard.classList.remove(
+                "translate-x-[-10px]",
+                "rotate-[-1deg]"
+            );
+
+            loginCard.classList.add(
+                "translate-x-[10px]",
+                "rotate-[1deg]"
+            );
+
+            setTimeout(() => {
+
+                loginCard.classList.remove(
+                    "translate-x-[10px]",
+                    "rotate-[1deg]"
+                );
+
+            }, 100);
+
+        }, 100);
+    }
+
+
+    function hideGlobalError() {
+
+        globalError.classList.add(
+            "hidden"
+        );
+    }
+
+
+    // ----------------------------------
+    // VALIDATION
+    // ----------------------------------
+
+    function validateEmail(email) {
+
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            .test(email);
+    }
+
+
+    function resetValidationState(
+        input,
+        errorText,
+        errorIcon
+    ) {
+
+        input.classList.remove(
+            "ring-2",
+            "ring-error",
+            "bg-error-container/10"
+        );
+
+        errorText.classList.add(
+            "hidden"
+        );
+
+        if (errorIcon) {
+            errorIcon.classList.add(
+                "hidden"
+            );
+        }
+    }
+
+
+    function setInvalidState(
+        input,
+        errorText,
+        errorIcon
+    ) {
+
+        input.classList.add(
+            "ring-2",
+            "ring-error",
+            "bg-error-container/10"
+        );
+
+        errorText.classList.remove(
+            "hidden"
+        );
+
+        if (errorIcon) {
+            errorIcon.classList.remove(
+                "hidden"
+            );
+        }
+    }
+
+
+    // ----------------------------------
+    // INPUT EVENTS
+    // ----------------------------------
+
+    emailInput.addEventListener(
+        "input",
+        () => {
+
+            resetValidationState(
+                emailInput,
+                emailErrorText,
+                emailErrorIcon
+            );
+
+            hideGlobalError();
+        }
+    );
+
+
+    passwordInput.addEventListener(
+        "input",
+        () => {
+
+            resetValidationState(
+                passwordInput,
+                passwordErrorText,
+                null
+            );
+
+            hideGlobalError();
+        }
+    );
+
+
+    // ----------------------------------
+    // PASSWORD VISIBILITY
+    // ----------------------------------
+
+    togglePasswordBtn.addEventListener(
+        "click",
+        () => {
+
+            const isPassword =
+                passwordInput.type === "password";
+
+            passwordInput.type =
+                isPassword
+                    ? "text"
+                    : "password";
+
+            toggleIcon.textContent =
+                isPassword
+                    ? "visibility"
+                    : "visibility_off";
+        }
+    );
+
+
+    // ----------------------------------
+    // SESSION EXPIRED MESSAGE
+    // ----------------------------------
+
+    const urlParams =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    if (
+        urlParams.get("error") === "401"
+    ) {
+
+        showGlobalError(
+            "Session expired. Please log in again."
+        );
+    }
+
+
+    // ----------------------------------
+    // LOGIN
+    // ----------------------------------
+
+    form.addEventListener(
+        "submit",
+        async (event) => {
+
+            event.preventDefault();
+
+            hideGlobalError();
+
+            const email =
+                emailInput.value.trim();
+
+            const password =
+                passwordInput.value;
+
+
+            // Validate email
+
+            if (!email) {
+
+                emailErrorText.textContent =
+                    "Email is required.";
+
+                setInvalidState(
+                    emailInput,
+                    emailErrorText,
+                    emailErrorIcon
+                );
+
+                return;
+            }
+
+
+            if (!validateEmail(email)) {
+
+                emailErrorText.textContent =
+                    "Please enter a valid email address.";
+
+                setInvalidState(
+                    emailInput,
+                    emailErrorText,
+                    emailErrorIcon
+                );
+
+                return;
+            }
+
+
+            // Validate password
+
+            if (!password) {
+
+                passwordErrorText.textContent =
+                    "Password is required.";
+
+                setInvalidState(
+                    passwordInput,
+                    passwordErrorText,
+                    null
+                );
+
+                return;
+            }
+
+
+            // ----------------------------------
+            // LOADING STATE
+            // ----------------------------------
+
+            submitBtn.disabled = true;
+
+            submitBtn.classList.add(
+                "opacity-90",
+                "cursor-not-allowed"
+            );
+
+            submitText.classList.add(
+                "hidden"
+            );
+
+            submitLoading.classList.remove(
+                "hidden"
+            );
+
+            submitLoading.classList.add(
+                "flex"
+            );
+
+
+            try {
+
+                // ----------------------------------
+                // REAL BACKEND LOGIN
+                // ----------------------------------
+
+                const result =
+                    await loginUser(
+                        email,
+                        password
+                    );
+
+
+                // Make sure JWT exists
+
+                if (
+                    !result ||
+                    !result.data ||
+                    !result.data.token
+                ) {
+
+                    throw new Error(
+                        "Login response did not contain a token."
+                    );
+                }
+
+
+                // Success UI
+
+                submitText.classList.add(
+                    "hidden"
+                );
+
+                submitLoading.classList.remove(
+                    "hidden"
+                );
+
+                submitLoading.classList.add(
+                    "flex"
+                );
+
+
+                // Redirect to dashboard
+
+                window.location.href =
+                    "dashboard.html";
+
+
+            } catch (error) {
+
+                console.error(
+                    "Login error:",
+                    error
+                );
+
+
+                showGlobalError(
+                    error.message ||
+                    "Invalid email or password."
+                );
+
+
+                // Reset button
+
+                submitBtn.disabled = false;
+
+                submitBtn.classList.remove(
+                    "opacity-90",
+                    "cursor-not-allowed"
+                );
+
+                submitText.classList.remove(
+                    "hidden"
+                );
+
+                submitLoading.classList.add(
+                    "hidden"
+                );
+
+                submitLoading.classList.remove(
+                    "flex"
+                );
+            }
+
+        }
+    );
+
+});
+</script>
+
+</body>
+</html>
