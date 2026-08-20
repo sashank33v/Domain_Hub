@@ -10,7 +10,7 @@ func CORS(next http.Handler) http.Handler {
 
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
-			"Content-Type",
+			"Content-Type, Authorization",
 		)
 
 		if r.Method == http.MethodOptions {
