@@ -22,6 +22,13 @@ func ConnectDB(cfg *config.Config) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("Host=%q Port=%q User=%q DB=%q SSL=%q\n",
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBUser,
+		cfg.DBName,
+		cfg.DBSSLMode,
+	)
 	err = db.Ping()
 	if err != nil {
 		return nil, err

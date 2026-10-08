@@ -4,6 +4,7 @@ import (
 	_ "domainhub/docs"
 	"domainhub/internal/handlers"
 	"domainhub/internal/middleware"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -24,4 +25,9 @@ func RegisterRoutes(r chi.Router, domainHandler *handlers.DomainHandler, authhan
 	})
 
 	r.Get("/swagger/*", httpSwagger.Handler())
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./frontend/login.html")
+	})
+	r.Handle("/*", http.FileServer(http.Dir("./frontend")))
 }

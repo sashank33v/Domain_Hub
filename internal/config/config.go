@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -19,7 +20,9 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	_ = godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		return nil, fmt.Errorf("failed to load .env: %w", err)
+	}
 
 	cfg := &Config{
 		AppName:    os.Getenv("APP_NAME"),
