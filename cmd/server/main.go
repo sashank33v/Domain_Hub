@@ -13,6 +13,7 @@ import (
 	"domainhub/internal/config"
 	"domainhub/internal/database"
 	"domainhub/internal/handlers"
+	"domainhub/internal/messaging"
 	"domainhub/internal/middleware"
 	"domainhub/internal/repository"
 	"domainhub/internal/routes"
@@ -44,11 +45,17 @@ func main() {
 	fmt.Println("Database Connected Successfully!")
 
 	domainRepo := repository.NewDomainRepository(db)
-	domainService := service.NewDomainService(domainRepo)
+	kafkaProducer := messaging.NewKafkaProducer("localhost:9092", "domain-events")
+	domainService := service.NewDomainService(domainRepo, kafkaProducer)
 	domainHandler := handlers.NewDomainHandler(domainService)
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	authhandler := handlers.NewAuthHandler(authService)
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Printf("Failed to close kafka producer: %v", err)
+		}
+	}()
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recovery)

@@ -1,21 +1,28 @@
 package service
 
 import (
+	"context"
 	"domainhub/internal/models"
 	"domainhub/internal/repository"
 	"errors"
 	"fmt"
+	"time"
 )
 
 var ErrInvalidDomain = errors.New("Invalid domain")
 
 type DomainService struct {
-	repo *repository.DomainRepository
+	repo     *repository.DomainRepository
+	producer DomainEventPublisher
+}
+type DomainEventPublisher interface {
+	PublishDomainCreated(ctx context.Context, domain *models.Domain) error
 }
 
-func NewDomainService(repo *repository.DomainRepository) *DomainService {
+func NewDomainService(repo *repository.DomainRepository, producer DomainEventPublisher) *DomainService {
 	return &DomainService{
-		repo: repo,
+		repo:     repo,
+		producer: producer,
 	}
 
 }
@@ -25,8 +32,21 @@ func (s *DomainService) Create(domain *models.Domain) error {
 	if err := validateDomain(domain); err != nil {
 		return err
 	}
+	if err := s.repo.Create(domain); err != nil {
+		return err
+	}
 
-	return s.repo.Create(domain)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	if err := s.producer.PublishDomainCreated(ctx, domain); err != nil {
+		return fmt.Errorf("domain created, but event publish failed: %w", err)
+	}
+	return nil
+
 }
 func (s *DomainService) GetAll(limit int, offset int, status string, registrar string) ([]models.Domain, int, error) {
 	return s.repo.GetAll(limit, offset, status, registrar)
