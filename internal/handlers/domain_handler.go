@@ -8,6 +8,7 @@ import (
 	"domainhub/internal/utils"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -74,6 +75,7 @@ func (h *DomainHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.service.Create(&domain)
 	if err != nil {
+		log.Printf("Create domain failed: %v\n", err)
 		if errors.Is(err, service.ErrInvalidDomain) {
 			utils.SendErrorResponse(
 				w,
