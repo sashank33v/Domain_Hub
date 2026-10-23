@@ -45,7 +45,15 @@ func main() {
 	fmt.Println("Database Connected Successfully!")
 
 	domainRepo := repository.NewDomainRepository(db)
-	kafkaProducer := messaging.NewKafkaProducer("localhost:9092", "domain-events")
+	kafkaBroker := os.Getenv("KAFKA_BROKER")
+	kafkaTopic := os.Getenv("KAFKA_TOPIC")
+	if kafkaBroker == "" {
+		kafkaBroker = "localhost:9092"
+	}
+	if kafkaTopic == "" {
+		kafkaTopic = "domain-events"
+	}
+	kafkaProducer := messaging.NewKafkaProducer(kafkaBroker, kafkaTopic)
 	domainService := service.NewDomainService(domainRepo, kafkaProducer)
 	domainHandler := handlers.NewDomainHandler(domainService)
 	userRepo := repository.NewUserRepository(db)
