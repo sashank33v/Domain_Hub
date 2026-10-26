@@ -54,11 +54,23 @@ func main() {
 		kafkaTopic = "domain-events"
 	}
 	kafkaProducer := messaging.NewKafkaProducer(kafkaBroker, kafkaTopic)
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Printf("Failed to close kafka producer: %v", err)
+		}
+	}()
+
+	consumerCtx, cancelConsumer := context.WithCancel(context.Background())
+	defer cancelConsumer()
+
 	kafkaConsumer := messaging.NewKafkaConsumer(kafkaBroker, kafkaTopic, "domainhub-consumer-group")
+	consumerDone := make(chan struct{})
+
 	go func() {
+		defer close(consumerDone)
 		log.Println("Starting kafka consumer...")
-		if err := kafkaConsumer.Consume(context.Background()); err != nil {
-			log.Printf("kafka consumer stopped: %v\n", err)
+		if err := kafkaConsumer.Consume(consumerCtx); err != nil && consumerCtx.Err() == nil {
+			log.Printf("kafka consumer stopped: %v", err)
 		}
 	}()
 	domainService := service.NewDomainService(domainRepo, kafkaProducer)
@@ -66,11 +78,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	authhandler := handlers.NewAuthHandler(authService)
-	defer func() {
-		if err := kafkaProducer.Close(); err != nil {
-			log.Printf("Failed to close kafka producer: %v", err)
-		}
-	}()
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recovery)
@@ -115,9 +123,15 @@ func main() {
 
 		err := server.Shutdown(ctx)
 		if err != nil {
-			log.Fatal("Server shutdown Error:", err)
+			log.Printf("Server shutdown error: %v", err)
 		}
-
+		cancelConsumer()
+		select {
+		case <-consumerDone:
+			log.Println("Kafka consumer stopped successfully")
+		case <-time.After(5 * time.Second):
+			log.Println("Timed out waiting for Kafka consumer shutdown")
+		}
 		fmt.Println("server stopped successfully")
 	}
 }

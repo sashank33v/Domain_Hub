@@ -26,6 +26,11 @@ func NewKafkaConsumer(broker, topic, groupID string) *kafkaConsumer {
 func (c *kafkaConsumer) Consume(ctx context.Context) error {
 	defer c.reader.Close()
 
+	go func() {
+		<-ctx.Done()
+		c.reader.Close()
+	}()
+
 	for {
 		msg, err := c.reader.ReadMessage(ctx)
 		if err != nil {
@@ -41,8 +46,15 @@ func (c *kafkaConsumer) Consume(ctx context.Context) error {
 			log.Printf("Invalid kafka event: %v", err)
 			continue
 		}
-
-		log.Printf("Recieved event: type=%s domain_id=%d domain_name=%s", event.EventType, event.DomainID, event.DomainName)
-
+		switch event.EventType {
+		case "domain.created":
+			log.Printf("Recieved event: type=%s domain_id=%d domain_name=%s", event.EventType, event.DomainID, event.DomainName)
+		case "domain.updated":
+			log.Printf("Recieved event: type=%s domain_id=%d domain_name=%s", event.EventType, event.DomainID, event.DomainName)
+		case "domain.deleted":
+			log.Printf("Recieved event: type=%s domain_id=%d domain_name=%s", event.EventType, event.DomainID, event.DomainName)
+		default:
+			log.Printf("Unkown domain event type: %s", event.EventType)
+		}
 	}
 }
