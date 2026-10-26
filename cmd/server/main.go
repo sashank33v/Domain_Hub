@@ -54,6 +54,13 @@ func main() {
 		kafkaTopic = "domain-events"
 	}
 	kafkaProducer := messaging.NewKafkaProducer(kafkaBroker, kafkaTopic)
+	kafkaConsumer := messaging.NewKafkaConsumer(kafkaBroker, kafkaTopic, "domainhub-consumer-group")
+	go func() {
+		log.Println("Starting kafka consumer...")
+		if err := kafkaConsumer.Consume(context.Background()); err != nil {
+			log.Printf("kafka consumer stopped: %v\n", err)
+		}
+	}()
 	domainService := service.NewDomainService(domainRepo, kafkaProducer)
 	domainHandler := handlers.NewDomainHandler(domainService)
 	userRepo := repository.NewUserRepository(db)
