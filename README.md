@@ -1,379 +1,250 @@
 # DomainHub 🚀
 
-**DomainHub** is a full-stack Domain & Hosting Management application for managing domain records through a RESTful Go backend and a responsive vanilla HTML/CSS/JavaScript frontend.
+DomainHub is a full-stack Domain & Hosting Management application. A RESTful Go backend manages domain records in PostgreSQL, publishes domain events to Kafka, and serves a responsive vanilla HTML/CSS/JavaScript frontend. It also includes an AI assistant that answers questions about your stored domains.
 
-The project demonstrates a layered Go backend architecture using **raw PostgreSQL queries**, database migrations, JWT authentication, middleware, DTOs, Swagger/OpenAPI documentation, unit tests, and production deployment on Render.
-
----
+The project demonstrates a layered Go backend architecture using raw PostgreSQL queries, database migrations, JWT authentication, middleware, DTOs, Kafka event streaming, an LLM-powered chatbot (Groq), Swagger/OpenAPI documentation, unit tests, and production deployment on Render.
 
 ## 🌐 Live Application
 
 | Component | URL |
-|---|---|
-| **Frontend** | https://domain-hub-frontend.onrender.com/ |
-| **Backend API** | https://domain-hub-b9o2.onrender.com |
-| **Swagger UI** | `https://domain-hub-b9o2.onrender.com/swagger/index.html` |
+|-----------|-----|
+| App link | https://domain-hub-b9o2.onrender.com |
+| Swagger UI | https://domain-hub-b9o2.onrender.com/swagger/index.html |
 
-> The backend root path `/` is not an application page. Use `/health`, `/domains`, `/auth/login`, or Swagger for API access.
+The Go server serves both the API and the frontend. Opening the App link loads the login page.
 
 ---
 
 ## ✨ Features
 
 ### Domain Management
-
-- Create a domain
-- View all domains
+- Create, view, update, and delete domains
 - View a domain by ID
-- Update a domain
-- Delete a domain
 - Filter domains by status
 - Search domains by registrar
-- Pagination with page, limit, total, and total pages
+- Pagination with `page`, `limit`, `total`, and `total_pages`
+- Dashboard with total, active, expiring-soon, and expired counts
 
 ### Authentication
-
-- User registration
-- Secure password hashing with **bcrypt**
+- User registration with bcrypt password hashing
 - Login with email and password
 - JWT token generation
 - JWT authentication middleware
-- Protected domain write operations
-- Automatic `401 Unauthorized` handling for invalid/missing tokens
+- Protected write operations and chat endpoint
+- Automatic redirect to login on `401 Unauthorized`
+
+### AI Assistant 🤖
+- Chat widget on the dashboard (💬 button)
+- Answers **only** from the domains stored in DomainHub (names, registrars, expiry dates, status, counts)
+- Uses live database data on every question
+- `days_left` for each domain is calculated by the backend, so the model does not do date math
+- Refuses questions that are not about your domains
+- Remembers the last 6 messages for follow-up questions
+- Powered by Groq (default model: `openai/gpt-oss-20b`)
+
+### Event Streaming
+- Domain create, update, and delete publish events to Kafka (`domain.created`, `domain.updated`, `domain.deleted`)
+- Producer with retry and backoff
+- Consumer group that reads the events in the same application
+- Kafka broker for local development via `docker-compose.yaml`
 
 ### Backend Engineering
-
-- Layered architecture
-- Raw PostgreSQL queries — no GORM or sqlboiler
+- Layered architecture (handler → service → repository)
+- Raw PostgreSQL queries (no ORM)
 - DTO layer for request/response separation
-- Logger middleware
-- Recovery middleware
-- CORS middleware
+- Logger and Recovery middleware
 - Graceful server shutdown
 - Database migrations
 - Swagger/OpenAPI documentation
-- Unit tests for Handler, Service, and Repository layers
+- Unit tests for handler, service, and repository layers
+- CLI tool to reset a user password
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Backend
-
-- **Go (Golang)"
-- **Chi Router**
-- **PostgreSQL**
-- **database/sql** with raw SQL queries
-- **JWT** (`github.com/golang-jwt/jwt/v5`)
-- **bcrypt** (`golang.org/x/crypto/bcrypt`)
-- **Swagger / Swaggo**
-- **Go testing + sqlmock**
-- **Database Migrations**
+- Go (Golang)
+- Chi Router
+- PostgreSQL with `database/sql` and pgx
+- JWT (`github.com/golang-jwt/jwt/v5`)
+- bcrypt (`golang.org/x/crypto/bcrypt`)
+- Kafka (`github.com/segmentio/kafka-go`)
+- Groq API (OpenAI-compatible chat completions)
+- Swagger / Swaggo
+- Go testing + sqlmock
 
 ### Frontend
-
-- **HTML5**
-- **CSS3**
-- **Vanilla JavaScript**
-- Tailwind CSS CDN for the UI styling
+- HTML5, CSS3, Vanilla JavaScript
+- Tailwind CSS (CDN)
 
 ### Deployment
-
-- **Render Web Service** — Go backend
-- **Render PostgreSQL** — production database
-- **Render Static Site** — frontend
-- **GitHub** — source control
+- Render Web Service (Go backend + frontend)
+- Render PostgreSQL
+- GitHub
 
 ---
 
 ## 🏗️ Architecture
 
-```text
+```
                          DomainHub
-                            │
-              ┌─────────────┴─────────────┐
-              │                           │
-         Frontend                     Backend
-              │                           │
-   HTML / CSS / JavaScript          Chi Router
-              │                           │
-              │                     Middleware
-              │                  ┌────────┼────────┐
-              │                  │        │        │
-              │                Logger  Recovery   CORS
-              │                           │
-              │                     Auth Middleware
-              │                           │
-              │                       Handlers
-              │                           │
-              │                        Services
-              │                           │
-              │                       Repository
-              │                           │
-              │                    Raw SQL Queries
-              │                           │
-              └──────────── REST API ─────┤
-                                          │
-                                      PostgreSQL
+                             │
+                  Browser (HTML / CSS / JS)
+                             │  REST API (JWT)
+                             ▼
+                  Go server (Chi Router)
+                             │
+                 Logger → Recovery → Auth
+                             │
+                         Handlers
+                             │
+                         Services ──────────► Groq API (chatbot)
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+         Repository                    Kafka producer
+              │                             │
+        Raw SQL queries               Kafka (domain-events)
+              │                             │
+          PostgreSQL                  Kafka consumer (logs events)
+```
+
+### AI chat flow
+
+```
+Question ─► POST /chat (JWT) ─► validate (max 500 chars)
+        ─► load domains + counts from PostgreSQL
+        ─► system prompt (rules + today's date + DATA)
+        ─► Groq ─► reply ─► chat widget
 ```
 
 ---
 
 ## 📁 Project Structure
 
-```text
+```
 domainhub/
-│
 ├── cmd/
-│   └── server/
-│       └── main.go
+│   ├── server/main.go              # application entrypoint
+│   └── resetpassword/main.go       # CLI: reset a user's password
 │
 ├── internal/
-│   ├── config/
-│   │   └── config.go
-│   │
-│   ├── database/
-│   │   └── database.go
-│   │
-│   ├── dto/
-│   │   ├── auth.go
-│   │   ├── domain.go
-│   │   └── response.go
-│   │
-│   ├── handlers/
-│   │   ├── auth_handlers.go
-│   │   ├── domain_handler.go
-│   │   └── domain_handler_test.go
-│   │
-│   ├── middleware/
-│   │   ├── auth.go
-│   │   ├── cors.go
-│   │   ├── logger.go
-│   │   └── recovery.go
-│   │
-│   ├── models/
-│   │   ├── domain.go
-│   │   ├── response.go
-│   │   └── user.go
-│   │
-│   ├── repository/
-│   │   ├── domain_repository.go
-│   │   ├── domain_repository_test.go
-│   │   └── user_repository.go
-│   │
-│   ├── routes/
-│   │   └── routes.go
-│   │
-│   ├── service/
-│   │   ├── domain_service.go
-│   │   ├── domain_service_test.go
-│   │   └── auth_service.go
-│   │
-│   └── utils/
-│       └── response.go
+│   ├── config/config.go
+│   ├── database/database.go
+│   ├── dto/                        # auth, domain request/response/mapper
+│   ├── handlers/                   # auth, domain, chat, health (+ tests)
+│   ├── messaging/                  # kafka_producer.go, kafka_consumer.go
+│   ├── middleware/                 # auth.go, cors.go, logger.go (Logger + Recovery)
+│   ├── models/                     # domain, user, response, pagination
+│   ├── repository/                 # domain, user (+ tests)
+│   ├── routes/routes.go
+│   ├── service/                    # auth, domain, ai_service (+ tests)
+│   └── utils/response.go
 │
-├── migrations/
-│   ├── 001_create_domains_table.up.sql
-│   ├── 001_create_domains_table.down.sql
-│   ├── 002_create_users_table.up.sql
-│   └── 002_create_users_table.down.sql
-│
-├── docs/
-│   ├── docs.go
-│   ├── swagger.json
-│   └── swagger.yaml
-│
+├── migrations/                     # 001 domains, 002 users
+├── docs/                           # generated Swagger files
 ├── frontend/
-│   ├── login.html
-│   ├── register.html
-│   ├── dashboard.html
-│   ├── domains.html
-│   ├── manage-domains.html
-│   ├── api.js
+│   ├── login.html / register.html
+│   ├── dashboard.html              # stats + AI chat widget
+│   ├── domains.html / manage-domains.html
+│   ├── api.js                      # API client + auth helpers
+│   ├── chat.js                     # chat widget logic
 │   └── config.js
 │
-├── .env
-├── .gitignore
-├── go.mod
-├── go.sum
+├── docker-compose.yaml             # local Kafka broker
+├── .env                            # local only, never commit
+├── go.mod / go.sum
 └── README.md
 ```
-
-> `.env` is for local development only and must not be committed to GitHub.
 
 ---
 
 ## 🗄️ Database Schema
 
-### `domains`
+### domains
 
 | Column | Type | Description |
-|---|---|---|
-| `id` | `serial` | Primary key |
-| `domain_name` | `varchar(200)` | Unique domain name |
-| `registrar` | `varchar(100)` | Domain registrar |
-| `expiry_date` | `date` | Domain expiry date |
-| `status` | `varchar(20)` | `ACTIVE` or `EXPIRED` |
+|--------|------|-------------|
+| id | serial | Primary key |
+| domain_name | varchar(200) | Unique domain name |
+| registrar | varchar(100) | Domain registrar |
+| expiry_date | date | Domain expiry date |
+| status | varchar(20) | `ACTIVE` or `EXPIRED` |
 
-### `users`
+### users
 
 | Column | Type | Description |
-|---|---|---|
-| `id` | `serial` | Primary key |
-| `email` | `varchar(150)` | Unique user email |
-| `password_hash` | `varchar(255)` | bcrypt password hash |
-| `role` | `varchar(20)` | Stored user role |
-| `created_at` | `timestamp` | User creation time |
+|--------|------|-------------|
+| id | serial | Primary key |
+| email | varchar(150) | Unique user email |
+| password_hash | varchar(255) | bcrypt password hash |
+| role | varchar(20) | Stored user role (default `USER`) |
+| created_at | timestamp | User creation time |
 
-> The project currently uses the role field as part of the user model/JWT, but authorization rules are intentionally not implemented. Authentication is the focus.
+The `role` field is stored and included in the JWT, but role-based authorization is not implemented. Authentication is the focus.
 
 ---
 
 ## 🔐 Authentication Flow
 
-```text
-POST /auth/register
-        │
-        ▼
-Validate input
-        │
-        ▼
-bcrypt hash password
-        │
-        ▼
-Store user in PostgreSQL
 ```
+POST /auth/register ─► validate ─► bcrypt hash ─► store user
 
-Login:
+POST /auth/login ─► find user ─► bcrypt compare ─► generate JWT ─► return token
 
-```text
-POST /auth/login
-        │
-        ▼
-Find user by email
-        │
-        ▼
-bcrypt.CompareHashAndPassword()
-        │
-        ▼
-Generate JWT
-        │
-        ▼
-Return token
-```
-
-Protected request:
-
-```text
-Authorization: Bearer <JWT>
-        │
-        ▼
-JWT Middleware
-        │
-        ├── Invalid → 401 Unauthorized
-        │
-        └── Valid → Continue to handler
+Authorization: Bearer <JWT> ─► Auth middleware ─┬─ invalid → 401
+                                                └─ valid   → handler
 ```
 
 ### Protected APIs
 
-```text
+```
 POST   /domains
 PUT    /domains/{id}
 DELETE /domains/{id}
+POST   /chat
 ```
 
-The read APIs remain public:
-
-```text
-GET /domains
-GET /domains/{id}
-```
+Public: `GET /health`, `GET /domains`, `GET /domains/{id}`, `/auth/*`, Swagger, and the frontend files.
 
 ---
 
 ## 📡 API Endpoints
 
 ### Health
-
 ```http
 GET /health
 ```
 
 ### Authentication
-
-#### Register
-
 ```http
 POST /auth/register
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "user@example.com",
-  "password": "StrongPassword123"
-}
-```
-
-#### Login
-
-```http
 POST /auth/login
 Content-Type: application/json
+
+{ "email": "user@example.com", "password": "StrongPassword123" }
 ```
-
-```json
-{
-  "email": "user@example.com",
-  "password": "StrongPassword123"
-}
-```
-
-Successful login returns a JWT token under `data.token`.
-
----
+A successful login returns a JWT under `data.token`.
 
 ### Domains
-
-#### Get all domains
-
 ```http
-GET /domains
-```
-
-Supports:
-
-```text
-page
-limit
-status
-registrar
+GET    /domains                  # page, limit, status, registrar
+GET    /domains/{id}
+POST   /domains                  # JWT
+PUT    /domains/{id}             # JWT
+DELETE /domains/{id}             # JWT
 ```
 
 Examples:
-
-```text
+```
 /domains?page=1&limit=10
 /domains?status=ACTIVE
 /domains?registrar=Cloudflare
 /domains?page=2&limit=5&status=ACTIVE&registrar=Cloudflare
 ```
 
-#### Get domain by ID
-
-```http
-GET /domains/{id}
-```
-
-#### Create domain
-
-```http
-POST /domains
-Authorization: Bearer <JWT>
-Content-Type: application/json
-```
-
+Create body:
 ```json
 {
   "domain_name": "example.com",
@@ -383,38 +254,43 @@ Content-Type: application/json
 }
 ```
 
-#### Update domain
-
+### AI Chat
 ```http
-PUT /domains/{id}
+POST /chat
 Authorization: Bearer <JWT>
 Content-Type: application/json
+
+{
+  "message": "Which domains expire in the next 30 days?",
+  "history": [
+    { "role": "user", "content": "List domains registered with GoDaddy" },
+    { "role": "assistant", "content": "..." }
+  ]
+}
 ```
 
-#### Delete domain
-
-```http
-DELETE /domains/{id}
-Authorization: Bearer <JWT>
+Response:
+```json
+{
+  "success": true,
+  "message": "Chat response generated",
+  "data": { "reply": "..." }
+}
 ```
 
----
+Rules:
+- `message` is required, maximum 500 characters
+- `history` is optional; only the last 6 `user`/`assistant` messages are used (other roles are ignored)
+- The request body is limited to 32 KB
+- Missing `GROQ_API_KEY` or a Groq failure returns an error response
 
-## 📄 Standard API Response
-
-The backend uses a standardized response structure:
-
+### Standard API Response
 ```json
 {
   "success": true,
   "message": "Domains fetched successfully",
   "data": [],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 0,
-    "total_pages": 0
-  }
+  "pagination": { "page": 1, "limit": 10, "total": 0, "total_pages": 0 }
 }
 ```
 
@@ -422,145 +298,68 @@ The backend uses a standardized response structure:
 
 ## 🧩 Middleware
 
-### Logger Middleware
-
-Records:
-
-- HTTP method
-- Request path
-- Response status
-- Request duration
-
-Example:
-
-```text
-GET /domains/4 200 27.115194ms
-```
-
-### Recovery Middleware
-
-Recovers from panics so that a single request does not crash the whole server.
-
-### CORS Middleware
-
-Allows the deployed frontend to communicate with the Go backend and supports the `Authorization` header used by JWT authentication.
-
-### Auth Middleware
-
-Validates the JWT sent through:
-
-```http
-Authorization: Bearer <token>
-```
+- **Logger**: method, path, status, and duration of each request
+- **Recovery**: recovers from panics so one request does not crash the server
+- **Auth**: validates `Authorization: Bearer <token>`
+- **CORS**: `middleware/cors.go` exists but is not enabled, because the frontend is served by the same server (same origin)
 
 ---
 
 ## 🧪 Testing
 
-The project contains unit tests for the important application layers.
-
-Run all tests:
-
 ```bash
 go test ./...
-```
-
-Run repository tests:
-
-```bash
 go test ./internal/repository -v
-```
-
-Run handler tests:
-
-```bash
 go test ./internal/handlers
-```
-
-Run service tests:
-
-```bash
 go test ./internal/service
 ```
 
-The repository tests use SQL mocking to verify raw SQL operations without requiring the real database for every test.
+- Repository tests use sqlmock to verify raw SQL without a real database
+- Handler tests use a fake service
+- Chat tests cover context building (including `days_left`), message validation, and bad requests
 
 ---
 
 ## 🗃️ Database Migrations
 
-The migration history is:
-
-```text
+```
 001 → create_domains_table
 002 → create_users_table
 ```
 
-Check migration version:
-
 ```bash
-migrate -path ./migrations \
--database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" \
-version
-```
+# check version
+migrate -path ./migrations -database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" version
 
-Apply migrations:
+# apply
+migrate -path ./migrations -database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" up
 
-```bash
-migrate -path ./migrations \
--database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" \
-up
-```
-
-Rollback the latest migration:
-
-```bash
-migrate -path ./migrations \
--database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" \
-steps -1
+# rollback latest
+migrate -path ./migrations -database "postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require" steps -1
 ```
 
 ---
 
 ## 📚 Swagger / OpenAPI
 
-Swagger documentation is generated using Swaggo.
-
-Generate documentation:
-
 ```bash
 swag init -g cmd/server/main.go
 ```
 
-Generated files are stored in:
-
-```text
-docs/
-├── docs.go
-├── swagger.json
-└── swagger.yaml
-```
-
-Swagger UI:
-
-```text
-https://domain-hub-b9o2.onrender.com/swagger/index.html
-```
+Generated files are stored in `docs/`. Swagger UI: https://domain-hub-b9o2.onrender.com/swagger/index.html
 
 ---
 
 ## ▶️ Run Locally
 
-### 1. Clone the repository
-
+### 1. Clone
 ```bash
 git clone <your-github-repository-url>
 cd domainhub
 ```
 
-### 2. Configure environment variables
-
-Create `.env`:
+### 2. Environment variables
+Create `.env` in the project root:
 
 ```env
 APP_NAME=DomainHub
@@ -574,157 +373,106 @@ DB_NAME=domainhub_db
 DB_SSLMODE=disable
 
 JWT_SECRET=your-local-jwt-secret
+
+# Kafka
+KAFKA_BROKER=localhost:9092
+KAFKA_TOPIC=domain-events
+
+# AI assistant
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
-### 3. Install dependencies
+| Variable | Purpose |
+|----------|---------|
+| `PORT`, `APP_NAME` | Server settings |
+| `DB_*` | PostgreSQL connection |
+| `JWT_SECRET` | JWT signing key |
+| `KAFKA_BROKER`, `KAFKA_TOPIC` | Kafka connection and topic |
+| `GROQ_API_KEY` | Groq API key for the AI assistant |
+| `GROQ_MODEL` | Optional; defaults to `openai/gpt-oss-20b` |
 
+### 3. Install dependencies
 ```bash
 go mod download
 ```
 
-### 4. Apply migrations
-
+### 4. Start Kafka
 ```bash
-migrate -path ./migrations \
--database "postgres://postgres:postgres@localhost:5432/domainhub_db?sslmode=disable" \
-up
+docker compose up -d
 ```
 
-### 5. Start backend
+### 5. Apply migrations
+```bash
+migrate -path ./migrations -database "postgres://postgres:postgres@localhost:5432/domainhub_db?sslmode=disable" up
+```
+
+### 6. Start the app
+Run from the project root (the server reads `.env` and `./frontend` relative to it):
 
 ```bash
 go run ./cmd/server
 ```
 
-Backend:
+Open `http://localhost:8000` (the frontend and API are served together).
 
-```text
-http://localhost:8000
-```
-
-### 6. Run frontend locally
-
+### Reset a user password
 ```bash
-cd frontend
-python3 -m http.server 5500
+go run ./cmd/resetpassword
 ```
-
-Frontend:
-
-```text
-http://localhost:5500/login.html
-```
-
-> Running the frontend through a local HTTP server is preferred over opening HTML files directly with `file://`.
 
 ---
 
 ## ⚙️ Frontend Configuration
 
-Edit:
-
-```text
-frontend/config.js
-```
-
-Set:
+`frontend/config.js` selects the API base URL:
 
 ```js
-const API_BASE_URL = "https://domain-hub-b9o2.onrender.com";
+const API_BASE_URL =
+    window.location.hostname === "localhost"
+        ? window.location.origin
+        : "https://domain-hub-b9o2.onrender.com";
 ```
 
-The frontend uses the backend for:
-
-```text
-Authentication → /auth/register, /auth/login
-Domains       → /domains, /domains/{id}
-```
-
-JWT tokens are stored in browser local storage and attached to protected write requests.
+- On `localhost` the frontend calls the local server
+- Elsewhere it calls the production server
+- JWT tokens are stored in browser local storage and attached to protected requests (all non-GET requests except `/auth/*`)
 
 ---
 
 ## 🚀 Deployment
 
-### Backend
+- **Web Service**: the Go app on Render serves the API and the frontend
+- **Database**: Render PostgreSQL; migrations are applied before running the API
+- **Environment variables** (set in Render): `APP_NAME`, `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL`, and `KAFKA_BROKER` / `KAFKA_TOPIC` if a Kafka broker is available
 
-The Go API is deployed on **Render Web Service**.
-
-Production configuration is supplied through Render environment variables:
-
-```text
-APP_NAME
-PORT
-DB_HOST
-DB_PORT
-DB_NAME
-DB_USER
-DB_PASSWORD
-DB_SSLMODE
-JWT_SECRET
+```
+User Browser ─► Render Web Service (Go: API + frontend) ─┬─► Render PostgreSQL
+                                                          ├─► Groq API
+                                                          └─► Kafka (if configured)
 ```
 
-### Database
-
-Production PostgreSQL runs on **Render PostgreSQL**.
-
-Migrations are applied to the production database before running the API.
-
-### Frontend
-
-The vanilla frontend is deployed as a **Render Static Site**.
-
-```text
-Frontend:
-https://domain-hub-frontend.onrender.com/
-```
-
-### Production Architecture
-
-```text
-User Browser
-     │
-     ▼
-Render Static Site
-     │
-     │ HTTPS / REST API
-     ▼
-Render Go Web Service
-     │
-     ▼
-Render PostgreSQL
-```
+Note: domain create, update, and delete publish a Kafka event after the database change. If the broker is unreachable, the API returns an error even though the database change was saved.
 
 ---
 
 ## 🔒 Security Notes
 
-- Plain-text passwords are never stored; bcrypt hashes are stored instead.
-- `.env` must not be committed to GitHub.
-- `JWT_SECRET` must be stored as a deployment secret/environment variable.
-- Password hashes are excluded from JSON responses.
-- Protected write APIs require a valid JWT.
-- Production database credentials must not be hard-coded in source code.
+- Passwords are stored as bcrypt hashes and excluded from JSON responses
+- `.env` must not be committed; `JWT_SECRET` and `GROQ_API_KEY` must be deployment secrets
+- Write APIs and `/chat` require a valid JWT
+- The AI assistant only receives domain data, never user accounts
+- User-entered domain fields are sanitized before being sent to the model, and chat history roles other than `user`/`assistant` are ignored
+- Chat replies are HTML-escaped in the browser before formatting
 
 ---
 
 ## 🔄 Graceful Shutdown
 
-The Go server supports graceful shutdown using OS signals.
-
-```text
-Ctrl+C / SIGTERM
-       ↓
-Stop accepting new work
-       ↓
-Allow active requests to finish
-       ↓
-Shutdown HTTP server
-       ↓
-Close database resources
 ```
-
-This avoids abruptly terminating the server while requests are still being processed.
+Ctrl+C / SIGTERM ─► stop accepting new work ─► finish active requests
+                 ─► shut down HTTP server ─► stop Kafka consumer ─► close database
+```
 
 ---
 
@@ -733,25 +481,18 @@ This avoids abruptly terminating the server while requests are still being proce
 - [x] REST API CRUD
 - [x] Raw PostgreSQL integration
 - [x] Database migrations
-- [x] Pagination
-- [x] Status and registrar filtering
-- [x] DTO layer
-- [x] Standard API responses
-- [x] Logger middleware
-- [x] Recovery middleware
-- [x] CORS middleware
+- [x] Pagination, status and registrar filtering
+- [x] DTO layer and standard API responses
+- [x] Logger and Recovery middleware
 - [x] Swagger/OpenAPI documentation
 - [x] Unit tests
 - [x] Graceful shutdown
-- [x] User registration
-- [x] bcrypt password hashing
-- [x] JWT login
-- [x] JWT authentication middleware
-- [x] Protected domain write APIs
-- [x] Production PostgreSQL
-- [x] Deployed Go backend
-- [x] Deployed frontend
-- [x] End-to-end frontend/backend integration
+- [x] User registration, bcrypt hashing, JWT login
+- [x] JWT middleware and protected write APIs
+- [x] Kafka producer and consumer
+- [x] AI assistant (`POST /chat`) with live domain data and chat history
+- [x] Dashboard chat widget
+- [x] Production PostgreSQL and deployed Go backend serving the frontend
 
 ---
 
@@ -759,17 +500,14 @@ This avoids abruptly terminating the server while requests are still being proce
 
 DomainHub was built as a practical backend-focused project to demonstrate:
 
-- Go REST API development
-- Layered backend architecture
+- Go REST API development and layered architecture
 - Raw SQL and PostgreSQL
-- Authentication with JWT and bcrypt
+- JWT and bcrypt authentication
 - Middleware design
-- Database migrations
-- Automated testing
-- API documentation
+- Kafka event streaming
+- Grounded LLM integration (Groq) with prompt scope control
+- Database migrations, automated testing, and API documentation
 - Production deployment
-
----
 
 ## 📄 License
 
