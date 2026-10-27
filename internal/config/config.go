@@ -17,6 +17,8 @@ type Config struct {
 	DBName     string
 	DBSSLMode  string
 	JWTSecret  string
+	GroqAPIKey string
+	GroqModel  string
 }
 
 func LoadConfig() (*Config, error) {
@@ -34,6 +36,8 @@ func LoadConfig() (*Config, error) {
 		DBName:     os.Getenv("DB_NAME"),
 		DBSSLMode:  os.Getenv("DB_SSLMODE"),
 		JWTSecret:  os.Getenv("JWT_SECRET"),
+		GroqAPIKey: os.Getenv("GROQ_API_KEY"),
+		GroqModel:  os.Getenv("GROQ_MODEL"),
 	}
 	return cfg, nil
 }

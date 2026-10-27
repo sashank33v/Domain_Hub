@@ -229,7 +229,25 @@ async function deleteDomain(id) {
         }
     );
 }
+// -------------------------
+// Chat
+// -------------------------
 
+async function sendChat(message, history = []) {
+
+    const result = await apiRequest(
+        "/chat",
+        {
+            method: "POST",
+            body: JSON.stringify({
+                message,
+                history
+            })
+        }
+    );
+
+    return result.data.reply;
+}
 
 // -------------------------
 // Helpers

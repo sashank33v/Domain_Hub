@@ -13,7 +13,6 @@ require (
 )
 
 require (
-	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	golang.org/x/sys v0.49.0 // indirect

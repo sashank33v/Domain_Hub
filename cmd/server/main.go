@@ -78,12 +78,14 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	authhandler := handlers.NewAuthHandler(authService)
+	aiService := service.NewAIService(domainRepo, cfg.GroqAPIKey, cfg.GroqModel)
+	chatHandler := handlers.NewChatHandler(aiService)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recovery)
 	//r.Use(middleware.CORS)
-	routes.RegisterRoutes(r, domainHandler, authhandler, cfg.JWTSecret)
+	routes.RegisterRoutes(r, domainHandler, authhandler, chatHandler, cfg.JWTSecret)
 
 	server := http.Server{
 		Addr:    ":" + cfg.Port,
